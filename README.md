@@ -23,8 +23,9 @@ Runs entirely on your own infrastructure. Works with any major LLM API, or **ful
 ---
 
 > [!WARNING]
-> **Status: early development (v0.1).** The architecture below is being implemented incrementally in
-> the open. See the [roadmap](#roadmap) for what actually works today. Star the repo to follow along.
+> **Status: v0.1, feature-complete but not yet battle-tested.** Everything described below is
+> implemented, typechecked, and unit-tested, but it has not run in production anywhere yet.
+> Expect rough edges, and please report them. See the [roadmap](#roadmap) for what is still missing.
 
 ---
 
@@ -66,7 +67,7 @@ Three more things, each from a real complaint about existing tools:
   to avoid running out of memory. Here, parsing and embedding run in a background worker with streaming
   and batching, so a 900-page manual is a job that takes a while, not a crash.
 - **Real multi-user isolation.** Every query is filtered by owner *inside* the SQL, not after retrieval.
-  Users see only their own documents, teams can share collections, and admins get an audit log.
+  Users see only their own documents, and admins get a full audit log.
 - **No vendor lock-in.** One provider interface, three adapters. Bring an API key, or run completely
   offline with Ollama on your own hardware.
 
@@ -88,7 +89,7 @@ Three more things, each from a real complaint about existing tools:
 - **Verified citations** — every claim checked against the passage it cites
 - Click a citation to jump to the exact page or heading it came from
 - Grounded refusal when the answer genuinely isn't in your documents
-- Conversation history, saved and searchable
+- Conversation history, saved per user
 
 **Teams and security**
 
@@ -189,6 +190,7 @@ Filtering after the fact is how data leaks happen.
 | **Grounded refusal when unsure**       |     **yes**     |   partial   |  partial   |  you build it  |
 | Hybrid vector and keyword retrieval    |       yes       |   partial   |  partial   |  you build it  |
 | Multi-user with per-user isolation     |       yes       |     yes     |    yes     |       no       |
+| Shared team collections                |    roadmap      |     yes     |    yes     |       no       |
 | Admin console and audit log            |       yes       |   partial   |  partial   |       no       |
 | Large documents without manual splits  |       yes       |   partial   |  partial   |  you build it  |
 | Runs fully offline with Ollama         |       yes       |     yes     |    yes     |      yes       |
@@ -236,18 +238,27 @@ prompting — the two things that most determine answer quality — while saving
 
 ## Roadmap
 
+**Built**
+
 - [x] Project scaffold, Docker Compose, schema design
-- [ ] Auth, sessions, and user management
-- [ ] Ingestion adapters for PDF, DOCX, HTML, and URL
-- [ ] Chunking, embeddings, and the background worker
-- [ ] Hybrid retrieval with Reciprocal Rank Fusion
-- [ ] Streaming chat with inline citations
-- [ ] Citation verification pass and grounding score
-- [ ] Admin console and audit log
+- [x] Auth, sessions, roles, and the audit trail
+- [x] Ingestion adapters for PDF, DOCX, HTML, Markdown, text, and URL
+- [x] SSRF-hardened URL fetching
+- [x] Chunking, embeddings, and the background worker
+- [x] Hybrid retrieval with Reciprocal Rank Fusion
+- [x] Streaming chat with inline citations and conversation history
+- [x] Citation verification pass and grounding score
+- [x] Grounded refusal below the retrieval threshold
+- [x] Admin console, user management, failed-job view
+- [x] Search across documents
+
+**Next**
+
 - [ ] Evaluation harness with a public benchmark set
 - [ ] Team collections and shared documents
 - [ ] OCR for scanned PDFs
 - [ ] Headless-browser fallback for JavaScript-rendered pages
+- [ ] Password reset and email invitations
 
 ---
 

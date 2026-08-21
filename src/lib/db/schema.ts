@@ -185,6 +185,17 @@ export const chunks = pgTable(
   ],
 )
 
+/** Snapshot of one passage as it was presented to the model. */
+export type StoredSource = {
+  n: number
+  chunkId: string
+  documentId: string
+  title: string
+  location: string | null
+  sourceUrl: string | null
+  excerpt: string
+}
+
 export type ChunkLocator = {
   charStart: number
   charEnd: number
@@ -228,6 +239,14 @@ export const messages = pgTable(
     groundingScore: smallint('grounding_score'),
     /** True when retrieval fell below RETRIEVAL_MIN_SCORE and we declined to answer. */
     refused: boolean('refused').notNull().default(false),
+
+    /**
+     * The passages this answer was given, in the order the [n] markers refer
+     * to. Stored on the message rather than derived later because retrieval is
+     * not deterministic across re-index or model changes: without this, an old
+     * answer's citation markers would eventually point at the wrong passages.
+     */
+    sources: jsonb('sources').$type<StoredSource[]>(),
 
     /** Provider and model that produced this, for reproducibility. */
     model: text('model'),

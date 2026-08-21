@@ -100,19 +100,27 @@ body {
   border-radius: 4px;
 }
 
+/*
+ * Tailwind v4 only lets @apply take real utilities, so the shared button base
+ * is a plain CSS rule that the variants inherit through the class list rather
+ * than an @apply-able `.btn`.
+ */
 @layer components {
-  .btn {
+  .btn,
+  .btn-primary,
+  .btn-ghost,
+  .btn-danger {
     @apply inline-flex items-center justify-center gap-2 rounded-lg px-3.5 py-2 text-sm font-medium
       transition-colors disabled:pointer-events-none disabled:opacity-50;
   }
   .btn-primary {
-    @apply btn bg-accent text-accent-fg hover:opacity-90;
+    @apply bg-accent text-accent-fg hover:opacity-90;
   }
   .btn-ghost {
-    @apply btn border border-border bg-surface text-text hover:bg-surface-2;
+    @apply border border-border bg-surface text-text hover:bg-surface-2;
   }
   .btn-danger {
-    @apply btn border border-border bg-surface text-danger hover:bg-danger-soft;
+    @apply border border-border bg-surface text-danger hover:bg-danger-soft;
   }
 
   .input {
