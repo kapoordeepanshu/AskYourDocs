@@ -4,7 +4,7 @@ import { db } from '@/lib/db'
 import { citations, conversations, messages } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { getLlm, type ChatMessage } from '@/lib/llm'
-import { parseSentences } from './citations'
+import { parseSentences, stripCitations } from './citations'
 import {
   ANSWER_SYSTEM,
   MAX_HISTORY_TURNS,
@@ -62,7 +62,13 @@ async function loadHistory(conversationId: string): Promise<ChatMessage[]> {
     .orderBy(desc(messages.createdAt))
     .limit(MAX_HISTORY_TURNS * 2)
 
-  return rows.reverse().map((row) => ({ role: row.role, content: row.content }))
+  return rows.reverse().map((row) => ({
+    role: row.role,
+    // Citation markers are stripped from past answers. Each turn is given a
+    // fresh set of passages, so a stale [3] in the history invites the model
+    // to reuse a number that now points somewhere else entirely.
+    content: row.role === 'assistant' ? stripCitations(row.content) : row.content,
+  }))
 }
 
 /**

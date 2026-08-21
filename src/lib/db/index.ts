@@ -1,4 +1,4 @@
-import { drizzle } from 'drizzle-orm/postgres-js'
+import { drizzle, type PostgresJsDatabase } from 'drizzle-orm/postgres-js'
 import postgres from 'postgres'
 
 import { env } from '@/lib/env'
@@ -11,22 +11,59 @@ declare global {
   var __askyourdocs_sql: ReturnType<typeof postgres> | undefined
 }
 
-function client() {
-  return postgres(env().DATABASE_URL, {
-    max: env().NODE_ENV === 'production' ? 10 : 4,
-    idle_timeout: 20,
-    connect_timeout: 10,
-  })
+type Client = ReturnType<typeof postgres>
+export type Db = PostgresJsDatabase<typeof schema>
+
+let cachedClient: Client | undefined
+let cachedDb: Db | undefined
+
+/**
+ * Connecting is deferred until the first query.
+ *
+ * `next build` imports every route module to collect page data. If the pool
+ * were opened at import time, a build would demand DATABASE_URL and
+ * SESSION_SECRET, which means either baking placeholder secrets into the image
+ * or being unable to build one at all. Nothing here should need a running
+ * database to compile.
+ */
+function getClient(): Client {
+  if (!cachedClient) {
+    cachedClient =
+      globalThis.__askyourdocs_sql ??
+      postgres(env().DATABASE_URL, {
+        max: env().NODE_ENV === 'production' ? 10 : 4,
+        idle_timeout: 20,
+        connect_timeout: 10,
+        // DROP ... IF EXISTS in the custom migrations raises harmless notices.
+        onnotice: () => {},
+      })
+
+    if (env().NODE_ENV !== 'production') globalThis.__askyourdocs_sql = cachedClient
+  }
+  return cachedClient
+}
+
+function getDb(): Db {
+  cachedDb ??= drizzle(getClient(), { schema })
+  return cachedDb
 }
 
 /**
- * Named `client`, not `sql`: an export called `sql` here shadows drizzle-orm's
- * `sql` template tag at every call site that imports both, and the resulting
- * failure (`query.getSQL is not a function`) points nowhere useful.
+ * Proxies so call sites keep the plain `db.select(...)` and `client.end()`
+ * ergonomics while the real objects are built on first use.
  */
-const client_ = globalThis.__askyourdocs_sql ?? client()
-if (env().NODE_ENV !== 'production') globalThis.__askyourdocs_sql = client_
+export const db = new Proxy({} as Db, {
+  get: (_target, property, receiver) => Reflect.get(getDb(), property, receiver),
+})
 
-export const db = drizzle(client_, { schema })
-export { client_ as client, schema }
-export type Db = typeof db
+/**
+ * Property access only. postgres.js is normally callable as a template tag,
+ * but nothing here uses it that way, and a proxy over a plain object cannot
+ * forward a call. Use drizzle's `sql` tag for queries and this for lifecycle
+ * calls like `client.end()` and `client.unsafe()`.
+ */
+export const client = new Proxy({} as Client, {
+  get: (_target, property, receiver) => Reflect.get(getClient(), property, receiver),
+})
+
+export { schema }

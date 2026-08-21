@@ -30,11 +30,10 @@ jobs:
       - name: Test
         run: npm test
 
+      # No environment needed: the database pool is opened lazily, so nothing
+      # requires a secret to compile.
       - name: Build
         run: npm run build
-        env:
-          SESSION_SECRET: ci-placeholder-secret-value-at-least-32-chars
-          DATABASE_URL: postgres://askyourdocs:askyourdocs@localhost:5432/askyourdocs
 
   docker:
     runs-on: ubuntu-latest
