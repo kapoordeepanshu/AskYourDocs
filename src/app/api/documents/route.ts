@@ -95,7 +95,7 @@ export const POST = route(async (request: Request) => {
     .values({
       ownerId: user.id,
       title: file.name.replace(/\.[^.]+$/, '') || file.name,
-      sourceType: format === 'markdown' ? 'markdown' : format,
+      sourceType: format,
       filename: file.name,
       mimeType: file.type || null,
       byteSize: file.size,

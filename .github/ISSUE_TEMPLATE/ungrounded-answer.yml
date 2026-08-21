@@ -1,0 +1,59 @@
+name: Ungrounded or wrong answer
+description: An answer cited a source that does not support it, or was wrong
+title: "[answer] "
+labels: ["grounding"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        This is the most valuable report this project can receive. An answer that
+        cites a passage which does not support it is a bug, not a rough edge.
+
+  - type: textarea
+    id: question
+    attributes:
+      label: The question you asked
+    validations:
+      required: true
+
+  - type: textarea
+    id: answer
+    attributes:
+      label: The answer you got
+      description: Include the citation markers, and the grounding score if one was shown.
+    validations:
+      required: true
+
+  - type: textarea
+    id: passage
+    attributes:
+      label: The cited passage
+      description: >
+        Use "Show sources" under the answer. Paste the passage that was cited but
+        does not support the claim.
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What the answer should have been
+      description: Including "it should have refused" - that is a valid expected outcome.
+    validations:
+      required: true
+
+  - type: input
+    id: providers
+    attributes:
+      label: Providers and models
+      placeholder: "LLM_PROVIDER=ollama llama3.1:8b, EMBEDDING_PROVIDER=ollama nomic-embed-text"
+    validations:
+      required: true
+
+  - type: textarea
+    id: document
+    attributes:
+      label: Source document
+      description: >
+        A small excerpt that reproduces it is ideal. Do not upload anything
+        confidential - redact freely, or describe the structure instead.

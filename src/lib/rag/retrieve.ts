@@ -57,11 +57,30 @@ export async function retrieve(
   query: string,
   options: { candidates?: number; documentIds?: string[] } = {},
 ): Promise<RetrievedChunk[]> {
-  const limit = options.candidates ?? env().RETRIEVAL_CANDIDATES
   const trimmed = query.trim()
   if (!trimmed) return []
 
   const [queryVector] = await getEmbeddings().embed([trimmed])
+  return retrieveWithVector(ownerId, trimmed, queryVector, options)
+}
+
+/**
+ * The retrieval query itself, with the embedding already computed.
+ *
+ * Split out so the SQL can be exercised against a real database without
+ * standing up an embedding provider, and so a caller that already holds a
+ * vector does not pay to compute it twice.
+ */
+export async function retrieveWithVector(
+  ownerId: string,
+  query: string,
+  queryVector: number[],
+  options: { candidates?: number; documentIds?: string[] } = {},
+): Promise<RetrievedChunk[]> {
+  const limit = options.candidates ?? env().RETRIEVAL_CANDIDATES
+  const trimmed = query.trim()
+  if (!trimmed) return []
+
   const vectorLiteral = toVectorLiteral(queryVector)
 
   // Optional scoping to a subset of documents, for "ask this document" flows.

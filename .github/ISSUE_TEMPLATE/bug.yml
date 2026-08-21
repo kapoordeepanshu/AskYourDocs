@@ -1,0 +1,47 @@
+name: Bug report
+description: Something is broken
+title: "[bug] "
+labels: ["bug"]
+body:
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: What you expected
+    validations:
+      required: true
+
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Upload ...
+        2. Ask ...
+        3. See ...
+    validations:
+      required: true
+
+  - type: dropdown
+    id: how
+    attributes:
+      label: How are you running it?
+      options:
+        - docker compose
+        - npm run dev
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: logs
+    attributes:
+      label: Relevant logs
+      description: Output from the app or worker container. Redact any API keys.
+      render: shell

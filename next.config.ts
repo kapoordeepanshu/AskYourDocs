@@ -2,7 +2,7 @@ import type { NextConfig } from 'next'
 
 const nextConfig: NextConfig = {
   output: 'standalone',
-  serverExternalPackages: ['unpdf', 'mammoth', 'jsdom', 'postgres'],
+  serverExternalPackages: ['unpdf', 'mammoth', 'linkedom', 'postgres'],
   experimental: {
     // Uploads are streamed to storage, but the parsed buffer still passes
     // through the route handler. Keep this in step with MAX_UPLOAD_MB.

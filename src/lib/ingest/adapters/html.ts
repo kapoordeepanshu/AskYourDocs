@@ -1,5 +1,5 @@
 import { Readability } from '@mozilla/readability'
-import { JSDOM, VirtualConsole } from 'jsdom'
+import { parseHTML } from 'linkedom'
 import TurndownService from 'turndown'
 
 import { blocksFromMarkdown, titleFromMarkdown } from '../normalize'
@@ -70,42 +70,29 @@ function turndown(): TurndownService {
  * That matters more than it sounds: boilerplate repeated across every page of
  * a documentation site is the single biggest source of near-duplicate chunks,
  * and near-duplicates crowd out the real answer in retrieval.
+ *
+ * Parsed with linkedom rather than jsdom. linkedom never executes scripts at
+ * all, which is the property that matters when the input is a page a user
+ * asked us to fetch, and it avoids jsdom's optional `canvas` peer dependency,
+ * which drags a native build toolchain into the image for a feature this app
+ * has no use for.
  */
 export function extractHtml(
   html: string,
   options: { url?: string; fallbackTitle?: string } = {},
 ): ExtractedDoc {
-  // A page that scripts or logs during parse should not be able to spam the
-  // worker's output or execute anything.
-  const virtualConsole = new VirtualConsole()
-  virtualConsole.on('error', () => {})
-  virtualConsole.on('jsdomError', () => {})
-
-  let dom: JSDOM
-  try {
-    dom = new JSDOM(html, {
-      ...(options.url ? { url: options.url } : {}),
-      virtualConsole,
-      // Scripts are never executed. This is load-bearing for security, not a
-      // performance choice.
-      runScripts: undefined,
-    })
-  } catch (error) {
-    throw new ExtractionError(
-      `Could not parse that HTML: ${error instanceof Error ? error.message : 'unknown error'}`,
-    )
-  }
-
-  const documentTitle = dom.window.document.title?.trim()
-
-  // Readability mutates the document it is given, so parse a clone and keep the
-  // original available as a fallback.
+  let documentTitle: string | undefined
   let articleHtml: string | undefined
   let articleTitle: string | undefined
+
   try {
-    const clone = dom.window.document.cloneNode(true) as Document
-    const article = new Readability(clone).parse()
-    if (article?.content && article.textContent.trim().length >= READABILITY_MIN_CHARS) {
+    // Readability mutates the document it is given, so it gets its own parse
+    // and the fallback path re-parses from the original source.
+    const { document } = parseHTML(html)
+    documentTitle = document.title?.trim()
+
+    const article = new Readability(document as unknown as Document).parse()
+    if (article?.content && (article.textContent ?? '').trim().length >= READABILITY_MIN_CHARS) {
       articleHtml = article.content
       articleTitle = article.title?.trim()
     }
@@ -115,10 +102,12 @@ export function extractHtml(
 
   let sourceHtml = articleHtml
   if (!sourceHtml) {
-    const body = dom.window.document.body
+    const { document } = parseHTML(html)
+    const body = document.body
     if (!body) throw new ExtractionError('That HTML document has no body.')
+
     for (const selector of CHROME_SELECTORS) {
-      body.querySelectorAll(selector).forEach((node) => node.remove())
+      for (const node of body.querySelectorAll(selector)) node.remove()
     }
     sourceHtml = body.innerHTML
   }
@@ -131,7 +120,11 @@ export function extractHtml(
   }
 
   const title =
-    articleTitle || documentTitle || titleFromMarkdown(markdown) || options.fallbackTitle || 'Untitled page'
+    articleTitle ||
+    documentTitle ||
+    titleFromMarkdown(markdown) ||
+    options.fallbackTitle ||
+    'Untitled page'
 
   return { title, blocks: blocksFromMarkdown(markdown) }
 }

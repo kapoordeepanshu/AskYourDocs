@@ -18,6 +18,22 @@ services:
       timeout: 5s
       retries: 20
 
+  # Runs once and exits. The app and worker wait for it to succeed, so a fresh
+  # `docker compose up` reaches a working instance without a manual step.
+  migrate:
+    build:
+      context: .
+      target: worker
+    restart: "no"
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://askyourdocs:askyourdocs@postgres:5432/askyourdocs
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    command: ["npx", "tsx", "src/lib/db/migrate.ts"]
+
   app:
     build:
       context: .
@@ -31,6 +47,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     ports:
       - "3000:3000"
     volumes:
@@ -49,6 +67,8 @@ services:
     depends_on:
       postgres:
         condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
     volumes:
       - uploads:/app/data/uploads
 

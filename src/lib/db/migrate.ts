@@ -12,7 +12,7 @@ import path from 'node:path'
 
 import { migrate } from 'drizzle-orm/postgres-js/migrator'
 
-import { db, sql } from './index'
+import { client, db } from './index'
 
 const CUSTOM_DIR = path.join(process.cwd(), 'drizzle', 'custom')
 const DRIZZLE_DIR = path.join(process.cwd(), 'drizzle')
@@ -20,7 +20,7 @@ const DRIZZLE_DIR = path.join(process.cwd(), 'drizzle')
 async function runSqlFile(file: string) {
   const contents = await readFile(path.join(CUSTOM_DIR, file), 'utf8')
   process.stdout.write(`  applying ${file}\n`)
-  await sql.unsafe(contents)
+  await client.unsafe(contents)
 }
 
 async function customFiles(match: (name: string) => boolean) {
@@ -48,11 +48,11 @@ async function main() {
   }
 
   process.stdout.write('Migrations complete\n')
-  await sql.end()
+  await client.end()
 }
 
 main().catch(async (error) => {
   process.stderr.write(`Migration failed: ${error instanceof Error ? error.message : error}\n`)
-  await sql.end({ timeout: 5 }).catch(() => {})
+  await client.end({ timeout: 5 }).catch(() => {})
   process.exit(1)
 })

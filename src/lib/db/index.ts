@@ -19,9 +19,14 @@ function client() {
   })
 }
 
-const sql = globalThis.__askyourdocs_sql ?? client()
-if (env().NODE_ENV !== 'production') globalThis.__askyourdocs_sql = sql
+/**
+ * Named `client`, not `sql`: an export called `sql` here shadows drizzle-orm's
+ * `sql` template tag at every call site that imports both, and the resulting
+ * failure (`query.getSQL is not a function`) points nowhere useful.
+ */
+const client_ = globalThis.__askyourdocs_sql ?? client()
+if (env().NODE_ENV !== 'production') globalThis.__askyourdocs_sql = client_
 
-export const db = drizzle(sql, { schema })
-export { sql, schema }
+export const db = drizzle(client_, { schema })
+export { client_ as client, schema }
 export type Db = typeof db

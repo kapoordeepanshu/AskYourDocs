@@ -9,7 +9,7 @@
  * Run with: npm run worker
  */
 import { pruneExpiredSessions } from '@/lib/auth/session'
-import { sql } from '@/lib/db'
+import { client } from '@/lib/db'
 import { ingestDocument } from '@/lib/ingest/pipeline'
 import { claimJob, completeJob, enqueue, failJob, requeueStaleJobs } from '@/lib/jobs/queue'
 import type { IngestPayload } from '@/lib/jobs/queue'
@@ -99,7 +99,7 @@ async function main() {
   }
 
   log('shutting down')
-  await sql.end({ timeout: 5 }).catch(() => {})
+  await client.end({ timeout: 5 }).catch(() => {})
   process.exit(0)
 }
 
