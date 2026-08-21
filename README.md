@@ -315,15 +315,8 @@ Found a vulnerability? Please read [SECURITY.md](SECURITY.md) instead of opening
 
 <div align="center">
 
-<sub>
+**Keywords:** open source chat with your documents · self-hosted document Q&A · chat with PDF · AI document assistant · RAG chatbot with citations · document AI for teams · private LLM · Ollama RAG · pgvector RAG · Next.js RAG application · AnythingLLM alternative · multi-user document chat · on-premise AI knowledge base · ask questions about your PDFs
 
-**Keywords:** open source chat with your documents · self-hosted document Q&A · chat with PDF ·
-AI document assistant · RAG chatbot with citations · document AI for teams · private LLM ·
-Ollama RAG · pgvector RAG · Next.js RAG application · AnythingLLM alternative ·
-multi-user document chat · on-premise AI knowledge base · ask questions about your PDFs
-
-</sub>
-
-If this is useful, a star helps other people find it.
+If this is useful, a ⭐ helps other people find it.
 
 </div>

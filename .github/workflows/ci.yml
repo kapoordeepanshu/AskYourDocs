@@ -39,5 +39,12 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      # .env is gitignored, and compose refuses to parse without it. Building
+      # it from the example also proves .env.example stays complete enough for
+      # the documented quick start to work.
+      - name: Create .env from the example
+        run: cp .env.example .env
+
       - name: Validate compose file
         run: docker compose config --quiet
