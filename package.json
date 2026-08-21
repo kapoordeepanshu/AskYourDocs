@@ -1,0 +1,53 @@
+{
+  "name": "askyourdocs",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Open-source, self-hosted document Q&A for teams. Upload PDF/DOCX/HTML/URL, chat with citations.",
+  "license": "Apache-2.0",
+  "engines": { "node": ">=20.9.0" },
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "worker": "tsx src/worker/index.ts",
+    "worker:dev": "tsx watch src/worker/index.ts",
+    "db:generate": "drizzle-kit generate",
+    "db:migrate": "tsx src/lib/db/migrate.ts",
+    "db:studio": "drizzle-kit studio",
+    "typecheck": "tsc --noEmit",
+    "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "^0.39.0",
+    "@aws-sdk/client-s3": "^3.744.0",
+    "@mozilla/readability": "^0.5.0",
+    "bcryptjs": "^2.4.3",
+    "drizzle-orm": "^0.39.0",
+    "jsdom": "^26.0.0",
+    "mammoth": "^1.9.0",
+    "next": "^15.3.0",
+    "openai": "^4.83.0",
+    "postgres": "^3.4.5",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "turndown": "^7.2.0",
+    "unpdf": "^0.12.1",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4.1.0",
+    "@types/bcryptjs": "^2.4.6",
+    "@types/jsdom": "^21.1.7",
+    "@types/node": "^22.13.0",
+    "@types/react": "^19.1.0",
+    "@types/react-dom": "^19.1.0",
+    "@types/turndown": "^5.0.5",
+    "drizzle-kit": "^0.30.4",
+    "tailwindcss": "^4.1.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3",
+    "vitest": "^3.0.5"
+  }
+}

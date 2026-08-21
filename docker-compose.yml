@@ -1,0 +1,75 @@
+name: askyourdocs
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg16
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: askyourdocs
+      POSTGRES_PASSWORD: askyourdocs
+      POSTGRES_DB: askyourdocs
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U askyourdocs -d askyourdocs"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      target: runner
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://askyourdocs:askyourdocs@postgres:5432/askyourdocs
+      LOCAL_STORAGE_PATH: /app/data/uploads
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads:/app/data/uploads
+
+  worker:
+    build:
+      context: .
+      target: worker
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      DATABASE_URL: postgres://askyourdocs:askyourdocs@postgres:5432/askyourdocs
+      LOCAL_STORAGE_PATH: /app/data/uploads
+      NODE_ENV: production
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - uploads:/app/data/uploads
+
+  # Optional S3-compatible storage. Enable with:
+  #   docker compose --profile s3 up
+  # then set STORAGE_DRIVER=s3 in .env
+  minio:
+    image: minio/minio:latest
+    profiles: ["s3"]
+    restart: unless-stopped
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: askyourdocs
+      MINIO_ROOT_PASSWORD: askyourdocs
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - miniodata:/data
+
+volumes:
+  pgdata:
+  uploads:
+  miniodata:
