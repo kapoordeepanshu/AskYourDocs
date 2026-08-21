@@ -20,7 +20,8 @@
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "smoke:db": "tsx scripts/smoke-db.ts"
+    "smoke:db": "tsx scripts/smoke-db.ts",
+    "images": "node scripts/build-images.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.39.0",
