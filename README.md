@@ -18,6 +18,12 @@ Runs entirely on your own infrastructure. Works with any major LLM API, or **ful
 
 [Quick start](#quick-start-2-minutes) · [Why this exists](#why-another-document-chatbot) · [How it works](#how-it-works) · [Comparison](#how-it-compares) · [FAQ](#faq)
 
+<br />
+
+<img src="docs/images/preview.png" width="900" alt="The AskYourDocs chat interface answering a question about a refund policy. Two claims carry citations that check out. A third claim is underlined in red and tagged unverified, and the answer shows a 67% grounded badge. A follow-up question gets a plain refusal because nothing in the documents answers it." />
+
+<sub><i>Interface mockup. The third claim is not supported by the passage it cites, so it is flagged rather than presented as fact.</i></sub>
+
 </div>
 
 ---
@@ -264,36 +270,68 @@ prompting — the two things that most determine answer quality — while saving
 
 ## FAQ
 
-**Is AskYourDocs free and open source?**
+<details>
+<summary><b>Is AskYourDocs free and open source?</b></summary>
+
 Yes, Apache 2.0. Self-host it commercially, fork it, embed it in your own product.
 
-**Can I use it without any API key?**
+</details>
+
+<details>
+<summary><b>Can I use it without any API key?</b></summary>
+
 Yes. Set `LLM_PROVIDER=ollama` and `EMBEDDING_PROVIDER=ollama`. Nothing leaves your machine, there is
 no per-token billing, and it works on air-gapped networks.
 
-**Do my documents get sent anywhere?**
+</details>
+
+<details>
+<summary><b>Do my documents get sent anywhere?</b></summary>
+
 Only to the LLM provider you configure, and only the passages relevant to a given question. With Ollama,
 nothing is sent anywhere at all. Files and embeddings are stored on your own infrastructure.
 
-**How is this different from uploading a PDF to a chatbot?**
+</details>
+
+<details>
+<summary><b>How is this different from uploading a PDF to a chatbot?</b></summary>
+
 Persistence and trust. Your documents stay indexed across sessions and users, retrieval scales to
 thousands of files, answers cite exact pages, and those citations are verified. Your data also stays
 on your own servers.
 
-**Can it handle scanned PDFs?**
+</details>
+
+<details>
+<summary><b>Can it handle scanned PDFs?</b></summary>
+
 Not yet. OCR is on the roadmap; today a PDF needs a text layer.
 
-**How large a document library can it handle?**
+</details>
+
+<details>
+<summary><b>How large a document library can it handle?</b></summary>
+
 pgvector handles into the millions of chunks with an HNSW index, which is realistically tens of
 thousands of documents on a modest VPS.
 
-**Can several people share one instance?**
+</details>
+
+<details>
+<summary><b>Can several people share one instance?</b></summary>
+
 Yes, that's the point. Each person sees only their own documents, and admins manage users and review
 an audit log.
 
-**Which vector database does it use?**
+</details>
+
+<details>
+<summary><b>Which vector database does it use?</b></summary>
+
 None. Postgres with pgvector. One database to operate and back up, and no risk of vectors drifting out
 of sync with their metadata.
+
+</details>
 
 ---
 
