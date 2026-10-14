@@ -2,7 +2,7 @@
   "name": "askyourdocs",
   "version": "0.1.0",
   "private": true,
-  "description": "Open-source, self-hosted document Q&A for teams. Upload PDF/DOCX/HTML/URL, chat with citations.",
+  "description": "Open-source, self-hosted document Q&A for teams. Upload PDF/DOCX/HTML/URL, chat with verified citations, and embed it on your website.",
   "license": "Apache-2.0",
   "engines": {
     "node": ">=20.9.0"

@@ -11,7 +11,7 @@
 [![pgvector](https://img.shields.io/badge/Postgres_+_pgvector-4169E1?style=for-the-badge&logo=postgresql&logoColor=white)](https://github.com/pgvector/pgvector)
 [![Docker](https://img.shields.io/badge/Docker-2496ED?style=for-the-badge&logo=docker&logoColor=white)](https://docker.com)
 
-**Upload PDFs, Word documents, HTML files, or paste a URL — then ask questions in plain English
+**Upload PDFs, Word documents, HTML files, or paste a URL — then ask questions in plain language
 and get answers grounded in your own documents, with citations that are checked before you see them.**
 
 Runs entirely on your own infrastructure. Works with any major LLM API, or **fully offline with Ollama**.
@@ -33,6 +33,9 @@ Put it on your own website with **one line of HTML**: visitors get the same veri
 > **Status: v0.1, feature-complete but not yet battle-tested.** Everything described below is
 > implemented, typechecked, and unit-tested, but it has not run in production anywhere yet.
 > Expect rough edges, and please report them. See the [roadmap](#roadmap) for what is still missing.
+>
+> The website widget, Groq provider, and Vercel + Supabase mode are newer still: typechecked,
+> unit-tested, and building, but not yet exercised end to end against a live database and model.
 
 ---
 
@@ -77,8 +80,8 @@ Three more things, each from a real complaint about existing tools:
   and batching, so a 900-page manual is a job that takes a while, not a crash.
 - **Real multi-user isolation.** Every query is filtered by owner *inside* the SQL, not after retrieval.
   Users see only their own documents, and admins get a full audit log.
-- **No vendor lock-in.** One provider interface, three adapters. Bring an API key, or run completely
-  offline with Ollama on your own hardware.
+- **No vendor lock-in.** One provider interface for Anthropic, OpenAI, Groq, and Ollama. Bring an API
+  key, or run completely offline with Ollama on your own hardware.
 
 ---
 
@@ -246,7 +249,8 @@ S3_FORCE_PATH_STYLE=true
 
 `INGEST_MODE` defaults to `inline` on Vercel: uploads are parsed and embedded in the same function
 invocation after the response is sent, and the documents page shows progress as usual. The app
-refuses to start on Vercel with local disk storage or worker mode, because neither would work there.
+refuses to run on Vercel with local disk storage or worker mode, because neither would work there, and
+the error names the variable to change.
 
 **Limits worth knowing.** Inline ingestion has no automatic retry; a failed document says why and
 has a **Re-index** button. Function duration caps how large one document can be. FAQ and policy
@@ -378,6 +382,8 @@ prompting — the two things that most determine answer quality — while saving
 - [ ] OCR for scanned PDFs
 - [ ] Headless-browser fallback for JavaScript-rendered pages
 - [ ] Password reset and email invitations
+- [ ] Keyword search in languages other than English (semantic search already works across languages)
+- [ ] Widget hand-off: collect a visitor's email when the answer isn't in the documents
 
 ---
 
@@ -403,6 +409,9 @@ no per-token billing, and it works on air-gapped networks.
 
 Only to the LLM provider you configure, and only the passages relevant to a given question. With Ollama,
 nothing is sent anywhere at all. Files and embeddings are stored on your own infrastructure.
+
+If you install a website widget, its visitors can read passages from the documents in that widget's
+scope, because that is what a citation shows. Scope public widgets to public documents.
 
 </details>
 
@@ -439,6 +448,25 @@ an audit log.
 </details>
 
 <details>
+<summary><b>Can I put it on my website for customers?</b></summary>
+
+Yes. Create a widget on the **Website widget** page and paste the one-line snippet into your site. See
+[Add it to your website](#add-it-to-your-website). It suits FAQ and policy questions for hotels,
+clinics, shops, schools, and support teams: anywhere the answers already exist in documents.
+
+</details>
+
+<details>
+<summary><b>Does it work in languages other than English?</b></summary>
+
+Answers come back in the language of the question, even when the documents are in another one, and
+semantic search matches across languages with a multilingual embedding model such as OpenAI's.
+Keyword search still uses English stemming, so exact-term matching is strongest for English
+documents.
+
+</details>
+
+<details>
 <summary><b>Which vector database does it use?</b></summary>
 
 None. Postgres with pgvector. One database to operate and back up, and no risk of vectors drifting out
@@ -466,7 +494,7 @@ Found a vulnerability? Please read [SECURITY.md](SECURITY.md) instead of opening
 
 <div align="center">
 
-**Keywords:** open source chat with your documents · self-hosted document Q&A · chat with PDF · AI document assistant · RAG chatbot with citations · document AI for teams · private LLM · Ollama RAG · pgvector RAG · Next.js RAG application · AnythingLLM alternative · multi-user document chat · on-premise AI knowledge base · ask questions about your PDFs
+**Keywords:** open source chat with your documents · self-hosted document Q&A · chat with PDF · AI document assistant · RAG chatbot with citations · document AI for teams · private LLM · Ollama RAG · pgvector RAG · Next.js RAG application · AnythingLLM alternative · multi-user document chat · on-premise AI knowledge base · ask questions about your PDFs · embeddable website chat widget · FAQ chatbot for websites · Groq RAG · Supabase pgvector · deploy RAG on Vercel
 
 If this is useful, a ⭐ helps other people find it.
 

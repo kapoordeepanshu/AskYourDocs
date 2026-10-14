@@ -109,6 +109,14 @@ export default async function AdminPage() {
             ['Chat model', `${config.LLM_PROVIDER} · ${modelFor(config)}`],
             ['Embeddings', `${config.EMBEDDING_PROVIDER} · ${config.EMBEDDING_DIMENSIONS} dimensions`],
             ['Storage', config.STORAGE_DRIVER],
+            [
+              'Ingestion',
+              config.INGEST_MODE === 'worker' ? 'background worker' : 'inline, no worker',
+            ],
+            [
+              'Widget limits',
+              `${config.WIDGET_VISITOR_HOURLY_LIMIT} per visitor per hour · ${config.WIDGET_DAILY_LIMIT} per widget per day`,
+            ],
             ['Reranking', config.RERANK_ENABLED ? 'on' : 'off'],
             ['Refusal threshold', String(config.RETRIEVAL_MIN_SCORE)],
             ['Public registration', config.ALLOW_PUBLIC_REGISTRATION ? 'open' : 'closed'],
@@ -174,5 +182,6 @@ export default async function AdminPage() {
 function modelFor(config: ReturnType<typeof env>): string {
   if (config.LLM_PROVIDER === 'anthropic') return config.ANTHROPIC_MODEL
   if (config.LLM_PROVIDER === 'openai') return config.OPENAI_MODEL
+  if (config.LLM_PROVIDER === 'groq') return config.GROQ_MODEL
   return config.OLLAMA_MODEL
 }
