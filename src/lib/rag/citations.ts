@@ -13,6 +13,8 @@ export interface AnswerSentence {
   passages: number[]
   /** True for headings, fenced code, and blank structure - not verified. */
   structural: boolean
+  /** 0-based line of the answer this came from, so a renderer can rebuild the layout. */
+  line: number
 }
 
 const CITATION = /\[(\d{1,2})\]/g
@@ -31,24 +33,37 @@ export function stripCitations(text: string): string {
   return text.replace(CITATION, '').replace(/\s{2,}/g, ' ').replace(/\s+([.,;:])/g, '$1').trim()
 }
 
-const SENTENCE_BOUNDARY = /(?<=[.!?])(["')\]]*)\s+(?=[A-Z0-9"'(\[])/
+// Any uppercase letter, not just A-Z, so answers in German or French split too.
+const SENTENCE_BOUNDARY = /(?<=[.!?])(["')\]]*)\s+(?=[\p{Lu}\p{N}"'(\[])/u
 
 export function parseSentences(answer: string): AnswerSentence[] {
   const sentences: AnswerSentence[] = []
   let index = 0
   let inFence = false
 
-  for (const rawLine of answer.split('\n')) {
+  for (const [lineIndex, rawLine] of answer.split('\n').entries()) {
     const line = rawLine.trim()
 
     if (line.startsWith('```')) {
       inFence = !inFence
-      sentences.push({ index: index++, text: rawLine, passages: [], structural: true })
+      sentences.push({
+        index: index++,
+        text: rawLine,
+        passages: [],
+        structural: true,
+        line: lineIndex,
+      })
       continue
     }
 
     if (inFence || line === '' || /^#{1,6}\s/.test(line) || /^[-*_]{3,}$/.test(line)) {
-      sentences.push({ index: index++, text: rawLine, passages: [], structural: true })
+      sentences.push({
+        index: index++,
+        text: rawLine,
+        passages: [],
+        structural: true,
+        line: lineIndex,
+      })
       continue
     }
 
@@ -66,7 +81,8 @@ export function parseSentences(answer: string): AnswerSentence[] {
         passages: extractPassageNumbers(text),
         // A fragment with no letters (stray punctuation from the split) is not
         // a claim worth verifying.
-        structural: !/[a-z]/i.test(text),
+        structural: !/\p{L}/u.test(text),
+        line: lineIndex,
       })
     }
   }

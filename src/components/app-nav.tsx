@@ -10,6 +10,7 @@ const LINKS = [
   { href: '/documents', label: 'Documents', icon: DocIcon },
   { href: '/chat', label: 'Chat', icon: ChatIcon },
   { href: '/search', label: 'Search', icon: SearchIcon },
+  { href: '/widgets', label: 'Website widget', icon: WidgetIcon },
 ] as const
 
 export function AppNav({ user }: { user: SessionUser }) {
@@ -136,6 +137,16 @@ function SearchIcon() {
     <svg viewBox="0 0 24 24" className="size-4.5" aria-hidden="true">
       <circle cx="11" cy="11" r="6.5" {...stroke} />
       <path d="m16 16 4 4" {...stroke} />
+    </svg>
+  )
+}
+
+function WidgetIcon() {
+  return (
+    <svg viewBox="0 0 24 24" className="size-4.5" aria-hidden="true">
+      <rect x="3" y="4" width="18" height="14" rx="2" {...stroke} />
+      <circle cx="16.5" cy="14" r="2" {...stroke} />
+      <path d="M3 8h18" {...stroke} />
     </svg>
   )
 }

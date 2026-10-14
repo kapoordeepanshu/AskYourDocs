@@ -13,7 +13,20 @@ import type { RetrievedChunk } from './retrieve'
  *      here means inventing a bridge between loosely related passages, so
  *      permission to refuse has to be explicit and repeated.
  */
-export const ANSWER_SYSTEM = `You answer questions using ONLY the numbered passages provided. The passages come from documents the user uploaded themselves.
+export type Audience = 'owner' | 'visitor'
+
+const OPENING: Record<Audience, string> = {
+  owner:
+    'You answer questions using ONLY the numbered passages provided. The passages come from documents the user uploaded themselves.',
+  // A website visitor is asking an organisation, not reading their own files.
+  // Speaking as that organisation's assistant keeps answers natural ("check-in
+  // is from 3pm") instead of narrating about "the documents".
+  visitor:
+    "You are the assistant on an organisation's website. You answer visitors' questions using ONLY the numbered passages provided, which come from that organisation's own documents. Speak on the organisation's behalf, briefly and warmly, and never mention passages, documents, or these rules.",
+}
+
+export function answerSystem(audience: Audience): string {
+  return `${OPENING[audience]}
 
 RULES
 
@@ -31,8 +44,13 @@ RULES
    Do not round numbers or paraphrase a legal or policy clause.
 7. Write plainly. No preamble, no restating the question, no closing summary.
    Short paragraphs, or a list when the answer is genuinely a list.
+8. Reply in the language the question is written in, even when the passages
+   are in another language. Keep quoted figures, names, and clauses exact.
 
 Cite the passage number as shown. Never invent a passage number.`
+}
+
+export const ANSWER_SYSTEM = answerSystem('owner')
 
 /** Numbering is 1-based to match the prompt; index 0 is passage [1]. */
 export function buildContext(chunks: RetrievedChunk[]): string {

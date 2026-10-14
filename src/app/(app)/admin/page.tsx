@@ -24,6 +24,9 @@ const ACTION_LABEL: Record<string, string> = {
   'document.reindexed': 're-indexed a document',
   'document.deleted': 'deleted a document',
   'conversation.deleted': 'deleted a conversation',
+  'widget.created': 'created a website widget',
+  'widget.updated': 'updated a website widget',
+  'widget.deleted': 'deleted a website widget',
 }
 
 export default async function AdminPage() {

@@ -14,12 +14,16 @@ const DEFAULT_MAX_TOKENS = 2048
 /** Large batches are where embedding calls time out, so keep them predictable. */
 const EMBED_BATCH_SIZE = 96
 
-type Flavour = 'openai' | 'ollama'
+type Flavour = 'openai' | 'groq' | 'ollama'
+/** Groq serves chat models only; it has no embeddings endpoint. */
+type EmbeddingFlavour = Exclude<Flavour, 'groq'>
+
+const GROQ_BASE_URL = 'https://api.groq.com/openai/v1'
 
 /**
- * Serves both OpenAI and Ollama. Ollama exposes an OpenAI-compatible /v1
- * endpoint, so one adapter covers both and the only differences are the base
- * URL, the model name, and the fact that Ollama ignores the API key.
+ * Serves OpenAI, Groq, and Ollama. Groq and Ollama both expose an
+ * OpenAI-compatible /v1 endpoint, so one adapter covers all three and the only
+ * differences are the base URL, the model name, and the API key.
  */
 export class OpenAiCompatibleProvider implements LlmProvider {
   readonly name: Flavour
@@ -32,6 +36,11 @@ export class OpenAiCompatibleProvider implements LlmProvider {
     if (flavour === 'ollama') {
       this.client = new OpenAI({ baseURL: env().OLLAMA_BASE_URL, apiKey: 'ollama' })
       this.model = env().OLLAMA_MODEL
+    } else if (flavour === 'groq') {
+      const key = env().GROQ_API_KEY
+      if (!key) throw new ProviderError('groq', 'GROQ_API_KEY is not set')
+      this.client = new OpenAI({ baseURL: GROQ_BASE_URL, apiKey: key })
+      this.model = env().GROQ_MODEL
     } else {
       const key = env().OPENAI_API_KEY
       if (!key) throw new ProviderError('openai', 'OPENAI_API_KEY is not set')
@@ -93,12 +102,12 @@ export class OpenAiCompatibleProvider implements LlmProvider {
 }
 
 export class OpenAiCompatibleEmbeddings implements EmbeddingProvider {
-  readonly name: Flavour
+  readonly name: EmbeddingFlavour
   readonly model: string
   readonly dimensions: number
   private client: OpenAI
 
-  constructor(flavour: Flavour) {
+  constructor(flavour: EmbeddingFlavour) {
     this.name = flavour
     this.dimensions = env().EMBEDDING_DIMENSIONS
 
@@ -166,12 +175,16 @@ function toOpenAiMessages(
 function describe(flavour: Flavour, error: unknown): string {
   if (error instanceof OpenAI.APIError) {
     if (error.status === 401) {
-      return flavour === 'ollama'
-        ? 'Ollama rejected the request. Is it running at OLLAMA_BASE_URL?'
+      if (flavour === 'ollama') return 'Ollama rejected the request. Is it running at OLLAMA_BASE_URL?'
+      return flavour === 'groq'
+        ? 'authentication failed, check GROQ_API_KEY'
         : 'authentication failed, check OPENAI_API_KEY'
     }
     if (error.status === 404 && flavour === 'ollama') {
       return `model "${env().OLLAMA_MODEL}" not found. Run: ollama pull ${env().OLLAMA_MODEL}`
+    }
+    if (error.status === 404 && flavour === 'groq') {
+      return `model "${env().GROQ_MODEL}" not found. Check GROQ_MODEL against console.groq.com/docs/models`
     }
     if (error.status === 429) return 'rate limited by the provider'
     return `request failed (${error.status}): ${error.message}`

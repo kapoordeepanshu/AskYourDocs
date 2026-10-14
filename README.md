@@ -15,6 +15,7 @@
 and get answers grounded in your own documents, with citations that are checked before you see them.**
 
 Runs entirely on your own infrastructure. Works with any major LLM API, or **fully offline with Ollama**.
+Put it on your own website with **one line of HTML**: visitors get the same verified, cited answers.
 
 [Quick start](#quick-start-2-minutes) · [Why this exists](#why-another-document-chatbot) · [How it works](#how-it-works) · [Comparison](#how-it-compares) · [FAQ](#faq)
 
@@ -40,13 +41,15 @@ Runs entirely on your own infrastructure. Works with any major LLM API, or **ful
 1. [Why another document chatbot?](#why-another-document-chatbot)
 2. [Features](#features)
 3. [Quick start (2 minutes)](#quick-start-2-minutes)
-4. [How it works](#how-it-works)
-5. [How it compares](#how-it-compares)
-6. [Configuration](#configuration)
-7. [Architecture](#architecture)
-8. [Roadmap](#roadmap)
-9. [FAQ](#faq)
-10. [Contributing](#contributing)
+4. [Add it to your website](#add-it-to-your-website)
+5. [Deploy on Vercel and Supabase](#deploy-on-vercel-and-supabase)
+6. [How it works](#how-it-works)
+7. [How it compares](#how-it-compares)
+8. [Configuration](#configuration)
+9. [Architecture](#architecture)
+10. [Roadmap](#roadmap)
+11. [FAQ](#faq)
+12. [Contributing](#contributing)
 
 ---
 
@@ -96,6 +99,16 @@ Three more things, each from a real complaint about existing tools:
 - Click a citation to jump to the exact page or heading it came from
 - Grounded refusal when the answer genuinely isn't in your documents
 - Conversation history, saved per user
+- Replies in the language the question was asked in, even when the documents use another
+
+**Website widget**
+
+- A chat bubble for your own website, installed with **one `<script>` tag**
+- Visitors get answers from the documents you choose, each with its source passage
+- Sentences the verifier rejects are **removed before the visitor sees the final answer**
+- Your own "I don't know" message, such as a phone number or email, instead of a guess
+- Origin allowlist, per-visitor and per-day rate limits, and pause or delete at any time
+- **Unanswered questions report**: see exactly what visitors asked that your documents don't cover
 
 **Teams and security**
 
@@ -108,8 +121,8 @@ Three more things, each from a real complaint about existing tools:
 **Operations**
 
 - `docker compose up` — Postgres with pgvector, the app, and the worker. No external accounts.
-- Deploys to any VPS, or to Vercel with a managed Postgres
-- Provider-agnostic: any major LLM API, or Ollama with no API key at all
+- Deploys to any VPS, or to **Vercel + Supabase** with no worker process ([guide](#deploy-on-vercel-and-supabase))
+- Provider-agnostic: Anthropic, OpenAI, **Groq**, or Ollama with no API key at all
 - Responsive interface, light and dark
 
 ---
@@ -148,6 +161,96 @@ docker compose up
 ```
 
 Open **http://localhost:3000**. The first account you register becomes the admin.
+
+---
+
+## Add it to your website
+
+1. Upload the documents visitors should be able to ask about, such as FAQs, policies, and price lists.
+2. Open **Website widget** and create a widget. Choose its title, greeting, colour, the message to
+   show when the answer isn't in your documents, and which documents it may answer from.
+3. Add your site under **Allowed websites**, for example `https://www.example.com` or
+   `https://*.example.com`.
+4. Copy the snippet and paste it before `</body>` on your site:
+
+```html
+<script src="https://docs.your-domain.com/widget.js" data-key="wk_..." async></script>
+```
+
+Optional: add `data-position="left"` to dock it bottom-left, or `data-open="true"` to start it open.
+**Preview** opens a blank page with the widget on it, so you can try it before installing.
+
+**What visitors get.** The answer streams in while it is written. Each citation is a numbered
+button that opens the exact passage it came from. Once verification finishes, any sentence its
+source doesn't support is removed and a short note says so. When retrieval finds nothing relevant,
+the visitor sees your fallback message instead of a guess.
+
+**What protects you.** The widget key is public by design; it sits in your page source. What
+protects you is the origin allowlist (browsers report the embedding site truthfully), the document
+scope, and the rate limits (`WIDGET_VISITOR_HOURLY_LIMIT`, `WIDGET_DAILY_LIMIT`). Visitor
+conversations stay out of your own chat history. Keep internal documents out of a public widget's
+scope: visitors can ask about anything in it.
+
+**What it teaches you.** The widget page lists the latest questions it could not answer. Each one
+is a gap in your documents, and adding a page that covers it fixes the answer for every visitor
+after.
+
+The widget is one dependency-free script that renders inside a shadow DOM, so your site's CSS
+cannot break it and it cannot affect your site. It follows the visitor's light or dark preference,
+goes full-screen on phones, and keeps the conversation while the visitor moves between pages.
+
+---
+
+## Deploy on Vercel and Supabase
+
+No Docker and no worker process. Supabase provides Postgres with pgvector and file storage; Vercel
+runs the app.
+
+**1. Supabase.** Create a project. Under **Storage**, create a private bucket named `documents`,
+then create S3 access keys under **Storage → S3 connection**. Note two connection strings from
+**Connect**:
+
+- the **transaction pooler** (port `6543`), which the app uses at runtime
+- the **session pooler** (port `5432`), which migrations use
+
+**2. Migrate.** From your machine, with the session pooler string:
+
+```bash
+DATABASE_URL="postgresql://postgres.xxxx:PASSWORD@aws-0-eu-central-1.pooler.supabase.com:5432/postgres" \
+SESSION_SECRET=$(openssl rand -base64 48) npm run db:migrate
+```
+
+This enables `vector` and `pg_trgm` and creates every table.
+
+**3. Vercel.** Import the repository and set these environment variables:
+
+```bash
+APP_URL=https://your-app.vercel.app
+SESSION_SECRET=...                       # openssl rand -base64 48
+DATABASE_URL=postgresql://...:6543/postgres
+DATABASE_POOLER=true
+
+LLM_PROVIDER=groq                        # or anthropic / openai
+GROQ_API_KEY=gsk_...
+EMBEDDING_PROVIDER=openai                # Groq has no embeddings
+OPENAI_API_KEY=sk-...
+
+STORAGE_DRIVER=s3
+S3_ENDPOINT=https://xxxx.supabase.co/storage/v1/s3
+S3_REGION=eu-central-1                   # your project's region
+S3_BUCKET=documents
+S3_ACCESS_KEY_ID=...
+S3_SECRET_ACCESS_KEY=...
+S3_FORCE_PATH_STYLE=true
+```
+
+`INGEST_MODE` defaults to `inline` on Vercel: uploads are parsed and embedded in the same function
+invocation after the response is sent, and the documents page shows progress as usual. The app
+refuses to start on Vercel with local disk storage or worker mode, because neither would work there.
+
+**Limits worth knowing.** Inline ingestion has no automatic retry; a failed document says why and
+has a **Re-index** button. Function duration caps how large one document can be. FAQ and policy
+documents finish in seconds, but for long manuals run the Docker setup with a worker instead.
 
 ---
 
@@ -192,6 +295,7 @@ Filtering after the fact is how data leaks happen.
 | Chat with PDF, DOCX, HTML              |       yes       |     yes     |    yes     |  you build it  |
 | Ingest a URL directly                  |       yes       |     yes     |  partial   |  you build it  |
 | Inline citations                       |       yes       |     yes     |    yes     |  you build it  |
+| Embeddable website chat widget         |       yes       |     yes     |     no     |  you build it  |
 | **Citations verified against source**  |     **yes**     |     no      |     no     |       no       |
 | **Grounded refusal when unsure**       |     **yes**     |   partial   |  partial   |  you build it  |
 | Hybrid vector and keyword retrieval    |       yes       |   partial   |  partial   |  you build it  |
@@ -214,7 +318,7 @@ Everything is environment variables. See [`.env.example`](.env.example) for the 
 
 | Variable                     | Default     | What it does                                                     |
 | ---------------------------- | ----------- | ---------------------------------------------------------------- |
-| `LLM_PROVIDER`               | `anthropic` | `anthropic`, `openai`, or `ollama`                                |
+| `LLM_PROVIDER`               | `anthropic` | `anthropic`, `openai`, `groq`, or `ollama`                        |
 | `EMBEDDING_PROVIDER`         | `openai`    | `openai` or `ollama`                                              |
 | `EMBEDDING_DIMENSIONS`       | `1536`      | Must match your embedding model; changing it means re-indexing    |
 | `RETRIEVAL_TOP_K`            | `8`         | Passages sent to the model                                        |
@@ -222,7 +326,11 @@ Everything is environment variables. See [`.env.example`](.env.example) for the 
 | `RERANK_ENABLED`             | `true`      | Rerank candidates before answering                                |
 | `ALLOW_PRIVATE_NETWORK_FETCH`| `false`     | SSRF guard for URL ingestion. Leave off in production.            |
 | `ALLOW_PUBLIC_REGISTRATION`  | `true`      | Turn off to make the instance admin-invite only                   |
-| `STORAGE_DRIVER`             | `local`     | `local` disk, or `s3` for MinIO, R2, or S3                        |
+| `STORAGE_DRIVER`             | `local`     | `local` disk, or `s3` for MinIO, R2, S3, or Supabase Storage      |
+| `INGEST_MODE`                | `worker`    | `inline` runs ingestion without a worker; the default on Vercel   |
+| `DATABASE_POOLER`            | `false`     | `true` for a transaction-mode pooler such as Supabase port 6543   |
+| `WIDGET_VISITOR_HOURLY_LIMIT`| `30`        | Questions one website visitor may ask per hour                    |
+| `WIDGET_DAILY_LIMIT`         | `1000`      | Questions one widget may answer per day, across all visitors      |
 
 ---
 
@@ -233,9 +341,10 @@ Everything is environment variables. See [`.env.example`](.env.example) for the 
 | Web + API | Next.js 15 App Router, TypeScript             | One codebase, one deploy target, streaming built in       |
 | Database  | Postgres 16 with pgvector                     | Vectors, full-text, and relational data in one place      |
 | Storage   | Local disk, or any S3-compatible store        | Self-hosting shouldn't require a cloud account            |
-| Worker    | Node process on a Postgres job queue          | No Redis, and ingestion survives restarts                 |
+| Worker    | Postgres job queue, or inline on serverless   | No Redis, and ingestion survives restarts                 |
 | Auth      | Server-side sessions, bcrypt, httpOnly cookies| Auditable, with no third-party identity provider          |
-| LLM       | Adapter interface with three implementations  | Swap providers with one environment variable              |
+| LLM       | Adapters for Anthropic, OpenAI, Groq, Ollama  | Swap providers with one environment variable              |
+| Widget    | One vanilla JS file in a shadow DOM           | No framework on your site, and no CSS clashes either way  |
 
 Deliberately **not** using LangChain. For a pipeline this shape it adds indirection over retrieval and
 prompting — the two things that most determine answer quality — while saving very little code.
@@ -257,6 +366,10 @@ prompting — the two things that most determine answer quality — while saving
 - [x] Grounded refusal below the retrieval threshold
 - [x] Admin console, user management, failed-job view
 - [x] Search across documents
+- [x] Embeddable website widget with an unanswered-questions report
+- [x] Groq provider
+- [x] Vercel + Supabase deployment without a worker
+- [x] Answers in the language of the question
 
 **Next**
 

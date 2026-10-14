@@ -1,4 +1,4 @@
-import { and, asc, desc, eq } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull } from 'drizzle-orm'
 
 import { db } from '@/lib/db'
 import { citations, conversations, messages } from '@/lib/db/schema'
@@ -6,10 +6,10 @@ import { env } from '@/lib/env'
 import { getLlm, type ChatMessage } from '@/lib/llm'
 import { parseSentences, stripCitations } from './citations'
 import {
-  ANSWER_SYSTEM,
   MAX_HISTORY_TURNS,
   REFUSAL_TEXT,
   TITLE_SYSTEM,
+  answerSystem,
   buildUserTurn,
   describeLocation,
 } from './prompt'
@@ -83,9 +83,17 @@ export async function* answerQuestion(input: {
   conversationId?: string
   documentIds?: string[]
   signal?: AbortSignal
+  /**
+   * Set when a website visitor is asking through an embedded widget. Scopes
+   * the conversation to that widget, so a visitor can never continue one of
+   * the owner's private conversations, or the reverse, by guessing an id.
+   */
+  widget?: { id: string; fallbackMessage: string }
 }): AsyncGenerator<AnswerEvent> {
   const started = Date.now()
   const question = input.question.trim()
+  const widgetId = input.widget?.id ?? null
+  const refusalText = input.widget?.fallbackMessage ?? REFUSAL_TEXT
 
   // ── Conversation ────────────────────────────────────────────────────────
   let conversationId = input.conversationId
@@ -93,7 +101,13 @@ export async function* answerQuestion(input: {
     const [existing] = await db
       .select({ id: conversations.id })
       .from(conversations)
-      .where(and(eq(conversations.id, conversationId), eq(conversations.ownerId, input.ownerId)))
+      .where(
+        and(
+          eq(conversations.id, conversationId),
+          eq(conversations.ownerId, input.ownerId),
+          widgetId ? eq(conversations.widgetId, widgetId) : isNull(conversations.widgetId),
+        ),
+      )
       .limit(1)
     if (!existing) {
       yield { type: 'error', message: 'That conversation no longer exists.' }
@@ -102,7 +116,7 @@ export async function* answerQuestion(input: {
   } else {
     const [created] = await db
       .insert(conversations)
-      .values({ ownerId: input.ownerId, title: question.slice(0, 80) })
+      .values({ ownerId: input.ownerId, widgetId, title: question.slice(0, 80) })
       .returning({ id: conversations.id })
     conversationId = created.id
   }
@@ -127,7 +141,7 @@ export async function* answerQuestion(input: {
       .values({
         conversationId,
         role: 'assistant',
-        content: REFUSAL_TEXT,
+        content: refusalText,
         refused: true,
         latencyMs: Date.now() - started,
       })
@@ -136,7 +150,7 @@ export async function* answerQuestion(input: {
     await touchConversation(conversationId)
 
     yield { type: 'meta', conversationId, sources: [] }
-    yield { type: 'delta', text: REFUSAL_TEXT }
+    yield { type: 'delta', text: refusalText }
     yield {
       type: 'done',
       messageId: saved.id,
@@ -163,7 +177,7 @@ export async function* answerQuestion(input: {
   let answer = ''
   try {
     for await (const delta of llm.stream(turns, {
-      system: ANSWER_SYSTEM,
+      system: answerSystem(widgetId ? 'visitor' : 'owner'),
       temperature: 0,
       maxTokens: 1500,
       signal: input.signal,
@@ -221,7 +235,8 @@ export async function* answerQuestion(input: {
   }
 
   await touchConversation(conversationId)
-  void maybeTitle(conversationId, question)
+  // Visitor conversations are never listed by title, so skip the extra call.
+  if (!widgetId) void maybeTitle(conversationId, question)
 
   yield {
     type: 'done',

@@ -6,10 +6,12 @@ import { audit } from '@/lib/audit'
 import { requireUser } from '@/lib/auth'
 import { db } from '@/lib/db'
 import { documents } from '@/lib/db/schema'
-import { enqueue } from '@/lib/jobs/queue'
+import { scheduleIngest } from '@/lib/jobs/dispatch'
 import { getStorage } from '@/lib/storage'
 
 export const runtime = 'nodejs'
+/** Only matters with INGEST_MODE=inline, where ingestion runs after the response. */
+export const maxDuration = 300
 
 const paramsSchema = z.object({ id: z.string().uuid() })
 
@@ -103,7 +105,7 @@ export const POST = route(async (request: Request, context: Context) => {
     .set({ status: 'pending', error: null, chunkCount: 0, updatedAt: new Date() })
     .where(eq(documents.id, doc.id))
 
-  await enqueue('document.ingest', { documentId: doc.id })
+  await scheduleIngest(doc.id)
 
   await audit({
     actorId: user.id,

@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
 import type { ChatMessageView, ConversationSummary } from '@/components/chat-view'
 import { db } from '@/lib/db'
@@ -17,7 +17,7 @@ export async function loadChatShell(ownerId: string): Promise<{
         updatedAt: conversations.updatedAt,
       })
       .from(conversations)
-      .where(eq(conversations.ownerId, ownerId))
+      .where(and(eq(conversations.ownerId, ownerId), isNull(conversations.widgetId)))
       .orderBy(desc(conversations.updatedAt))
       .limit(100),
     db
@@ -44,7 +44,15 @@ export async function loadConversation(
   const [conversation] = await db
     .select({ id: conversations.id, title: conversations.title })
     .from(conversations)
-    .where(and(eq(conversations.id, conversationId), eq(conversations.ownerId, ownerId)))
+    .where(
+      and(
+        eq(conversations.id, conversationId),
+        eq(conversations.ownerId, ownerId),
+        // A widget conversation cannot be continued from here: answerQuestion
+        // would refuse it, so it should not open as if it could.
+        isNull(conversations.widgetId),
+      ),
+    )
     .limit(1)
 
   if (!conversation) return null

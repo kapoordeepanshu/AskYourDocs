@@ -18,6 +18,9 @@ export function getLlm(): LlmProvider {
       case 'openai':
         llm = new OpenAiCompatibleProvider('openai')
         break
+      case 'groq':
+        llm = new OpenAiCompatibleProvider('groq')
+        break
       case 'ollama':
         llm = new OpenAiCompatibleProvider('ollama')
         break

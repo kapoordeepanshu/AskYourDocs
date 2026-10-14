@@ -19,6 +19,9 @@ export type AuditAction =
   | 'document.reindexed'
   | 'document.deleted'
   | 'conversation.deleted'
+  | 'widget.created'
+  | 'widget.updated'
+  | 'widget.deleted'
 
 export interface AuditEntry {
   actorId?: string | null

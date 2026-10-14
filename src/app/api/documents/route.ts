@@ -10,10 +10,12 @@ import { documents } from '@/lib/db/schema'
 import { env } from '@/lib/env'
 import { detectFormat } from '@/lib/ingest/adapters'
 import { ExtractionError } from '@/lib/ingest/types'
-import { enqueue } from '@/lib/jobs/queue'
+import { scheduleIngest } from '@/lib/jobs/dispatch'
 import { getStorage, storageKey } from '@/lib/storage'
 
 export const runtime = 'nodejs'
+/** Only matters with INGEST_MODE=inline, where ingestion runs after the response. */
+export const maxDuration = 300
 /** Uploads must never be cached or statically evaluated. */
 export const dynamic = 'force-dynamic'
 
@@ -116,7 +118,7 @@ export const POST = route(async (request: Request) => {
   }
 
   await db.update(documents).set({ storageKey: key }).where(eq(documents.id, created.id))
-  await enqueue('document.ingest', { documentId: created.id })
+  await scheduleIngest(created.id)
 
   await audit({
     actorId: user.id,

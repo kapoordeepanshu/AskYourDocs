@@ -1,4 +1,4 @@
-import { desc, eq } from 'drizzle-orm'
+import { and, desc, eq, isNull } from 'drizzle-orm'
 
 import { json, route } from '@/lib/api'
 import { requireUser } from '@/lib/auth'
@@ -18,7 +18,8 @@ export const GET = route(async () => {
       updatedAt: conversations.updatedAt,
     })
     .from(conversations)
-    .where(eq(conversations.ownerId, user.id))
+    // Website visitors' conversations are reviewed from the widgets page instead.
+    .where(and(eq(conversations.ownerId, user.id), isNull(conversations.widgetId)))
     .orderBy(desc(conversations.updatedAt))
     .limit(200)
 

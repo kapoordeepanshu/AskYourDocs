@@ -8,6 +8,13 @@
       "when": 1787300380916,
       "tag": "0000_perfect_mystique",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1791966953582,
+      "tag": "0001_widgets",
+      "breakpoints": true
     }
   ]
 }

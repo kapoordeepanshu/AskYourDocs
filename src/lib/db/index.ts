@@ -34,6 +34,7 @@ function getClient(): Client {
         max: env().NODE_ENV === 'production' ? 10 : 4,
         idle_timeout: 20,
         connect_timeout: 10,
+        prepare: !env().DATABASE_POOLER,
         // DROP ... IF EXISTS in the custom migrations raises harmless notices.
         onnotice: () => {},
       })

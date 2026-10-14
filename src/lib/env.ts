@@ -24,8 +24,14 @@ const schema = z
       .min(32, 'SESSION_SECRET must be at least 32 characters. Generate: openssl rand -base64 48'),
 
     DATABASE_URL: z.string().url(),
+    /**
+     * Set when DATABASE_URL points at a transaction-mode pooler (Supabase on
+     * port 6543, PgBouncer). Those cannot hold prepared statements across
+     * transactions, so the driver must not create any.
+     */
+    DATABASE_POOLER: bool(false),
 
-    LLM_PROVIDER: z.enum(['anthropic', 'openai', 'ollama']).default('anthropic'),
+    LLM_PROVIDER: z.enum(['anthropic', 'openai', 'groq', 'ollama']).default('anthropic'),
     EMBEDDING_PROVIDER: z.enum(['openai', 'ollama']).default('openai'),
 
     ANTHROPIC_API_KEY: z.string().optional(),
@@ -34,6 +40,9 @@ const schema = z
     OPENAI_API_KEY: z.string().optional(),
     OPENAI_MODEL: z.string().default('gpt-4o-mini'),
     OPENAI_EMBEDDING_MODEL: z.string().default('text-embedding-3-small'),
+
+    GROQ_API_KEY: z.string().optional(),
+    GROQ_MODEL: z.string().default('llama-3.3-70b-versatile'),
 
     OLLAMA_BASE_URL: z.string().url().default('http://localhost:11434/v1'),
     OLLAMA_MODEL: z.string().default('llama3.1:8b'),
@@ -50,6 +59,13 @@ const schema = z
     S3_SECRET_ACCESS_KEY: z.string().optional(),
     S3_FORCE_PATH_STYLE: bool(true),
 
+    /**
+     * `worker` hands ingestion to the background worker (npm run worker).
+     * `inline` runs it in the upload request after the response is sent, for
+     * hosts with no long-running process such as Vercel.
+     */
+    INGEST_MODE: z.enum(['worker', 'inline']).default(process.env.VERCEL ? 'inline' : 'worker'),
+
     MAX_UPLOAD_MB: int(25),
     CHUNK_SIZE_TOKENS: int(800),
     CHUNK_OVERLAP_TOKENS: int(120),
@@ -64,6 +80,11 @@ const schema = z
     RERANK_ENABLED: bool(true),
 
     ALLOW_PUBLIC_REGISTRATION: bool(true),
+
+    /** Questions one visitor may ask a website widget per hour. */
+    WIDGET_VISITOR_HOURLY_LIMIT: int(30),
+    /** Questions a single widget may answer per day, across all visitors. */
+    WIDGET_DAILY_LIMIT: int(1000),
   })
   .superRefine((env, ctx) => {
     const missing = (key: string, why: string) =>
@@ -71,6 +92,9 @@ const schema = z
 
     if (env.LLM_PROVIDER === 'anthropic' && !env.ANTHROPIC_API_KEY) {
       missing('ANTHROPIC_API_KEY', 'required when LLM_PROVIDER=anthropic')
+    }
+    if (env.LLM_PROVIDER === 'groq' && !env.GROQ_API_KEY) {
+      missing('GROQ_API_KEY', 'required when LLM_PROVIDER=groq')
     }
     if (
       (env.LLM_PROVIDER === 'openai' || env.EMBEDDING_PROVIDER === 'openai') &&
@@ -80,6 +104,15 @@ const schema = z
     }
     if (env.STORAGE_DRIVER === 's3' && !(env.S3_BUCKET && env.S3_ACCESS_KEY_ID)) {
       missing('S3_BUCKET', 'S3_BUCKET and S3_ACCESS_KEY_ID are required when STORAGE_DRIVER=s3')
+    }
+    if (process.env.VERCEL && env.STORAGE_DRIVER === 'local') {
+      missing(
+        'STORAGE_DRIVER',
+        'Vercel has no persistent disk. Use STORAGE_DRIVER=s3 (Supabase Storage, R2, or S3)',
+      )
+    }
+    if (process.env.VERCEL && env.INGEST_MODE === 'worker') {
+      missing('INGEST_MODE', 'Vercel cannot run the background worker. Use INGEST_MODE=inline')
     }
     if (env.CHUNK_OVERLAP_TOKENS >= env.CHUNK_SIZE_TOKENS) {
       missing('CHUNK_OVERLAP_TOKENS', 'must be smaller than CHUNK_SIZE_TOKENS')

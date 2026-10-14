@@ -216,10 +216,19 @@ export const conversations = pgTable(
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
     title: text('title').notNull().default('New conversation'),
+    /**
+     * Set for conversations held by a website visitor through an embedded
+     * widget. Those belong to the widget owner for retrieval and accounting,
+     * but stay out of the owner's own chat history.
+     */
+    widgetId: uuid('widget_id').references(() => widgets.id, { onDelete: 'cascade' }),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
     updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
   },
-  (t) => [index('conversations_owner_updated_idx').on(t.ownerId, t.updatedAt.desc())],
+  (t) => [
+    index('conversations_owner_updated_idx').on(t.ownerId, t.updatedAt.desc()),
+    index('conversations_widget_idx').on(t.widgetId, t.createdAt.desc()),
+  ],
 )
 
 export const messages = pgTable(
@@ -294,6 +303,60 @@ export const citations = pgTable(
   ],
 )
 
+// ─── Website widgets ────────────────────────────────────────────────────────
+
+/**
+ * A public chat box a user embeds on their own website, answering visitors
+ * from that user's documents.
+ *
+ * `publicKey` is not a secret: it sits in the page source of every site the
+ * widget is embedded on. What protects the owner is the origin allowlist, the
+ * document scope, and the rate limits, not the key.
+ */
+export const widgets = pgTable(
+  'widgets',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    ownerId: uuid('owner_id')
+      .notNull()
+      .references(() => users.id, { onDelete: 'cascade' }),
+    publicKey: text('public_key').notNull(),
+
+    /** Internal label, shown only to the owner. */
+    name: text('name').notNull(),
+    /** Header of the chat panel visitors see. */
+    title: text('title').notNull(),
+    greeting: text('greeting').notNull(),
+    /** Shown instead of an answer when the documents do not cover the question. */
+    fallbackMessage: text('fallback_message').notNull(),
+    accentColor: text('accent_color').notNull().default('#2563eb'),
+
+    /** Exact origins such as https://example.com, or https://*.example.com. Empty allows any. */
+    allowedOrigins: text('allowed_origins').array().notNull().default(sql`'{}'::text[]`),
+    /** Documents the widget may answer from. Null means every ready document the owner has. */
+    documentIds: uuid('document_ids').array(),
+
+    enabled: boolean('enabled').notNull().default(true),
+    createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),
+    updatedAt: timestamp('updated_at', { withTimezone: true }).notNull().defaultNow(),
+  },
+  (t) => [
+    uniqueIndex('widgets_public_key_idx').on(t.publicKey),
+    index('widgets_owner_idx').on(t.ownerId, t.createdAt.desc()),
+  ],
+)
+
+/**
+ * Fixed-window counters for the public widget endpoints. Kept in Postgres
+ * because serverless instances share no memory, and a per-instance counter
+ * would multiply the real limit by however many instances happen to be warm.
+ */
+export const rateLimits = pgTable('rate_limits', {
+  key: text('key').primaryKey(),
+  windowStart: timestamp('window_start', { withTimezone: true }).notNull(),
+  count: integer('count').notNull(),
+})
+
 // ─── Jobs ───────────────────────────────────────────────────────────────────
 
 /**
@@ -353,3 +416,4 @@ export type Conversation = typeof conversations.$inferSelect
 export type Message = typeof messages.$inferSelect
 export type Citation = typeof citations.$inferSelect
 export type Job = typeof jobs.$inferSelect
+export type Widget = typeof widgets.$inferSelect

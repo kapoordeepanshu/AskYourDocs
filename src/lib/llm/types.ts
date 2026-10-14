@@ -34,7 +34,7 @@ export interface CompletionResult {
 }
 
 export interface LlmProvider {
-  readonly name: 'anthropic' | 'openai' | 'ollama'
+  readonly name: 'anthropic' | 'openai' | 'groq' | 'ollama'
   readonly model: string
 
   /** Streaming generation, used for the answer the user is watching. */
